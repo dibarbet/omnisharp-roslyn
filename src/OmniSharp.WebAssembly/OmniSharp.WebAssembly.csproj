@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\OmniSharp.Host\OmniSharp.Host.csproj" />
+        <ProjectReference Include="..\OmniSharp.Roslyn.CSharp\OmniSharp.Roslyn.CSharp.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Basic.CompilerLog.Util" Version="1.0.0" />
+    </ItemGroup>
+</Project>

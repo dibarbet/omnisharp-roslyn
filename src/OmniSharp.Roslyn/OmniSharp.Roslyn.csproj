@@ -21,8 +21,4 @@
     <PackageReference Include="System.ComponentModel.Composition" />
     <PackageReference Include="System.Reflection.DispatchProxy" />
   </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-    <PackageReference Include="Basic.CompilerLog.Util" Version="1.0.0" />
-  </ItemGroup>
 </Project>
