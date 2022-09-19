@@ -557,12 +557,59 @@ Task("PublishNet6Builds")
     }
 });
 
-string PublishBuild(string project, BuildEnvironment env, BuildPlan plan, string configuration, string rid, string framework)
+Task("PublishWebAssemblyBuilds")
+    .IsDependentOn("Setup")
+    .Does(() =>
+{
+    foreach (var project in buildPlan.WebAssemblyProjects)
+    {
+        PublishWebAssembly(project, env, buildPlan, configuration, "net6.0");
+    }
+});
+
+void PublishWebAssembly(string project, BuildEnvironment env, BuildPlan plan, string configuration, string framework)
+{
+    var projectName = project + ".csproj";
+    var projectFileName = CombinePaths(env.Folders.Source, project, projectName);
+    var outputDir = CombinePaths(env.Folders.ArtifactsPublish, project, framework);
+    Information("Publishing webassembly {0} for {1}...", projectName, framework);
+    var logFileNameBase = CombinePaths(env.Folders.ArtifactsLogs, "OmniSharp-build");
+    try
+    {
+        var publishSettings = new DotNetCorePublishSettings()
+        {
+            Framework = framework,
+            Configuration = configuration,
+            MSBuildSettings = new DotNetCoreMSBuildSettings(),
+            ArgumentCustomization = args =>
+            args.Append($"/bl:{logFileNameBase}_2.binlog;")
+        };
+
+        DotNetCorePublish(projectFileName, publishSettings);
+    }
+    catch
+    {
+        Error($"Failed to publish {project} for {configuration}, {framework}");
+        throw;
+    }
+
+    var binDir = CombinePaths(env.Folders.Bin, configuration, project);
+    var dotnetDTs = "dotnet.d.ts";
+    var dotnetJs = "dotnet.js";
+    var dotnetJsMap = "dotnet.js.map";
+
+    Information("Copying js files from {0} to {1}...", binDir, outputDir);
+    CreateDirectory(outputDir);
+    FileHelper.Copy(CombinePaths(binDir, dotnetDTs), CombinePaths(outputDir, dotnetDTs), overwrite: true);
+    FileHelper.Copy(CombinePaths(binDir, dotnetJs), CombinePaths(outputDir, dotnetJs), overwrite: true);
+    FileHelper.Copy(CombinePaths(binDir, dotnetJsMap), CombinePaths(outputDir, dotnetJsMap), overwrite: true);
+}
+
+string PublishBuild(string project, BuildEnvironment env, BuildPlan plan, string configuration, string rid, string framework, bool isSelfContained = false)
 {
     var projectName = project + ".csproj";
     var projectFileName = CombinePaths(env.Folders.Source, project, projectName);
     var outputFolder = CombinePaths(env.Folders.ArtifactsPublish, project, rid, framework);
-
     Information("Publishing {0} for {1}...", projectName, rid);
 
     try
@@ -586,6 +633,7 @@ string PublishBuild(string project, BuildEnvironment env, BuildPlan plan, string
             WorkingDirectory = env.WorkingDirectory,
             Verbosity = DotNetCoreVerbosity.Minimal,
         };
+
         DotNetCorePublish(projectFileName, publishSettings);
     }
     catch
@@ -674,6 +722,7 @@ Task("Publish")
     .IsDependentOn("Build")
     .IsDependentOn("PublishMonoBuilds")
     .IsDependentOn("PublishNet6Builds")
+    .IsDependentOn("PublishWebAssemblyBuilds")
     .IsDependentOn("PublishWindowsBuilds")
     .IsDependentOn("PublishNuGet");
 
