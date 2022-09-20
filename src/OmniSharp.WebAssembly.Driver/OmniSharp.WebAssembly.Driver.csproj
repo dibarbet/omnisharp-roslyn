@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\OmniSharp.Stdio\OmniSharp.Stdio.csproj" />
+        <ProjectReference Include="..\OmniSharp.WebAssembly\OmniSharp.WebAssembly.csproj" />
     </ItemGroup>
 
     <ItemGroup>
