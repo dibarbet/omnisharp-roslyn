@@ -54,7 +54,7 @@ namespace OmniSharp
             : this(aggregator.CreateHostServices(), loggerFactory, fileSystemWatcher)
         {
         }
-        
+
         public OmniSharpWorkspace(HostServices hostServices, ILoggerFactory loggerFactory, IFileSystemWatcher fileSystemWatcher)
             : base(hostServices, "Custom")
         {
@@ -598,6 +598,11 @@ namespace OmniSharp
             }
 
             base.ApplyProjectChanges(projectChanges);
+        }
+
+        public void AddSolution(SolutionInfo info)
+        {
+            OnSolutionAdded(info);
         }
     }
 }
