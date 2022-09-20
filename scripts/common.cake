@@ -359,6 +359,7 @@ public class BuildPlan
     public string RequiredMonoVersion { get; set; }
     public string DownloadURL { get; set; }
     public string[] HostProjects { get; set; }
+    public string[] WebAssemblyProjects { get; set; }
     public string[] TestProjects { get; set; }
     public string[] TestAssets { get; set; }
     public string[] CakeTestAssets { get; set; }
