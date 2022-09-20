@@ -12,6 +12,9 @@
         "OmniSharp.Stdio.Driver",
         "OmniSharp.Http.Driver"
     ],
+    "WebAssemblyProjects": [
+        "OmniSharp.WebAssembly.Driver"
+    ],
     "TestProjects": [
         "OmniSharp.MSBuild.Tests",
         "OmniSharp.Roslyn.CSharp.Tests",

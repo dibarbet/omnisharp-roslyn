@@ -18,6 +18,7 @@
     <RepositoryUrl>https://github.com/OmniSharp/omnisharp-roslyn.git</RepositoryUrl>
 
     <OutputPath>$([System.IO.Path]::GetFullPath('$(RepositoryRootDirectory)bin\$(Configuration)\$(MSBuildProjectName)'))\</OutputPath>
+    <BaseOutputPath>$([System.IO.Path]::GetFullPath('$(RepositoryRootDirectory)bin\$(Configuration)\$(MSBuildProjectName)'))\</BaseOutputPath>
     <BaseIntermediateOutputPath>$([System.IO.Path]::GetFullPath('$(RepositoryRootDirectory)bin\obj\$(MSBuildProjectName)'))\</BaseIntermediateOutputPath>
   </PropertyGroup>
 
