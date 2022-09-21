@@ -1,9 +1,14 @@
+using System;
 using System.Collections.Generic;
 using System.Composition;
 using System.Threading.Tasks;
+
 using Basic.CompilerLog.Util;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+
 using OmniSharp.Mef;
 using OmniSharp.Models.WorkspaceInformation;
 using OmniSharp.Services;
@@ -16,6 +21,7 @@ internal class CompilerLoggerProjectSystem : IProjectSystem
     private readonly CompilerLoggerOptions _options  = new();
     private readonly OmniSharpWorkspace _workspace;
     private readonly TaskCompletionSource _completionSource = new TaskCompletionSource();
+    private readonly ILogger _logger;
 
     public string Key => "CompilerLogger";
     public string Language => LanguageNames.CSharp;
@@ -24,9 +30,10 @@ internal class CompilerLoggerProjectSystem : IProjectSystem
     public bool Initialized { get; private set; }
 
     [ImportingConstructor]
-    public CompilerLoggerProjectSystem(OmniSharpWorkspace workspace)
+    public CompilerLoggerProjectSystem(OmniSharpWorkspace workspace, ILoggerFactory loggerFactory)
     {
         this._workspace = workspace;
+        this._logger = loggerFactory?.CreateLogger<CompilerLoggerProjectSystem>() ?? throw new ArgumentNullException(nameof(loggerFactory));
     }
 
     public void Initalize(IConfiguration configuration)
@@ -34,8 +41,8 @@ internal class CompilerLoggerProjectSystem : IProjectSystem
         if (Initialized) return;
 
         configuration.Bind(_options);
-
-        using var compilerLogStream = CompilerLogUtil.GetOrCreateCompilerLogStream(_options.LogUri.AbsoluteUri);
+        _logger.LogInformation($"Reading compiler log from {_options.LogUri}");
+        using var compilerLogStream = CompilerLogUtil.GetOrCreateCompilerLogStream(_options.LogUri.IsAbsoluteUri ? _options.LogUri.AbsolutePath : _options.LogUri.OriginalString);
         using var reader = SolutionReader.Create(compilerLogStream);
         var solution = reader.ReadSolution();
         _workspace.AddSolution(solution);

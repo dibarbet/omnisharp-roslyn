@@ -15,6 +15,10 @@ Open console (Ctrl+Shift+I) to see the output.
         // Invoking 'GetName()' C# method defined in 'HelloWorld' assembly.
         const guestName = dotnet.OmniSharp.WebAssembly.Driver.GetName();
         console.log(`Welcome, ${guestName}! Enjoy your global space.`);
+        dotnet.invokeAsync('OmniSharp.WebAssembly.Driver', 'InitializeAsync')
+            .then(data => {
+                console.log(data);
+            });
     };
 
 </script>
