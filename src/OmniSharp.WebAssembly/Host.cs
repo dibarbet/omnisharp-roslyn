@@ -2,7 +2,7 @@ using System;
 
 namespace OmniSharp.WebAssembly;
 
-internal class Host : IDisposable
+public class Host : IDisposable
 {
     public void Dispose()
     {

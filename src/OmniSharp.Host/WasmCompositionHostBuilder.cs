@@ -24,13 +24,13 @@ using OmniSharp.Services;
 
 namespace OmniSharp
 {
-    public class CompositionHostBuilder
+    public class WasmCompositionHostBuilder
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnumerable<Assembly> _assemblies;
         private readonly IEnumerable<ExportDescriptorProvider> _exportDescriptorProviders;
 
-        public CompositionHostBuilder(
+        public WasmCompositionHostBuilder(
             IServiceProvider serviceProvider,
             IEnumerable<Assembly> assemblies = null,
             IEnumerable<ExportDescriptorProvider> exportDescriptorProviders = null)
@@ -49,28 +49,14 @@ namespace OmniSharp
             var analyzerAssemblyLoader = _serviceProvider.GetRequiredService<IAnalyzerAssemblyLoader>();
             var environment = _serviceProvider.GetRequiredService<IOmniSharpEnvironment>();
             var eventEmitter = _serviceProvider.GetRequiredService<IEventEmitter>();
-            var dotNetCliService = _serviceProvider.GetRequiredService<IDotNetCliService>();
             var config = new ContainerConfiguration();
 
-            var fileSystemNotifier = _serviceProvider.GetRequiredService<IFileSystemNotifier>();
             var fileSystemWatcher = _serviceProvider.GetRequiredService<IFileSystemWatcher>();
+
             var logger = loggerFactory.CreateLogger<CompositionHostBuilder>();
-
-            // We must register an MSBuild instance before composing MEF to ensure that
-            // our AssemblyResolve event is hooked up first.
-            var msbuildLocator = _serviceProvider.GetRequiredService<IMSBuildLocator>();
-            var dotNetInfo = dotNetCliService.GetInfo(workingDirectory);
-
-            // Don't register the default instance if an instance is already registered!
-            // This is for tests, where the MSBuild instance may be registered early.
-            if (msbuildLocator.RegisteredInstance == null)
-            {
-                msbuildLocator.RegisterDefaultInstance(logger, dotNetInfo);
-            }
 
             config = config
                 .WithProvider(MefValueProvider.From(_serviceProvider))
-                .WithProvider(MefValueProvider.From(fileSystemNotifier))
                 .WithProvider(MefValueProvider.From(fileSystemWatcher))
                 .WithProvider(MefValueProvider.From(memoryCache))
                 .WithProvider(MefValueProvider.From(loggerFactory))
@@ -80,10 +66,7 @@ namespace OmniSharp
                 .WithProvider(MefValueProvider.From(options.CurrentValue.FormattingOptions))
                 .WithProvider(MefValueProvider.From(assemblyLoader))
                 .WithProvider(MefValueProvider.From(analyzerAssemblyLoader))
-                .WithProvider(MefValueProvider.From(dotNetCliService))
-                .WithProvider(MefValueProvider.From(msbuildLocator))
-                .WithProvider(MefValueProvider.From(eventEmitter))
-                .WithProvider(MefValueProvider.From(dotNetInfo));
+                .WithProvider(MefValueProvider.From(eventEmitter));
 
             foreach (var exportDescriptorProvider in _exportDescriptorProviders)
             {
@@ -127,12 +110,12 @@ namespace OmniSharp
         {
             services ??= new ServiceCollection();
 
-            services.TryAddSingleton(_ => new ManualFileSystemWatcher());
-            services.TryAddSingleton<IFileSystemNotifier>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
-            services.TryAddSingleton<IFileSystemWatcher>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
-
             services.AddSingleton(environment);
             services.AddSingleton(eventEmitter);
+
+            // Required by omnisharp workspace.
+            services.TryAddSingleton(_ => new ManualFileSystemWatcher());
+            services.TryAddSingleton<IFileSystemWatcher>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
 
             // Caching
             services.AddSingleton<IMemoryCache, MemoryCache>();
@@ -145,15 +128,6 @@ namespace OmniSharp
                 .PostConfigure<OmniSharpOptions>(OmniSharpOptions.PostConfigure);
             services.AddSingleton(configuration);
             services.AddSingleton<IConfiguration>(configuration);
-
-            services.AddSingleton<IDotNetCliService, DotNetCliService>();
-
-            // MSBuild
-            services.AddSingleton<IMSBuildLocator>(sp =>
-                MSBuildLocator.CreateDefault(
-                    loggerFactory: sp.GetService<ILoggerFactory>(),
-                    assemblyLoader: sp.GetService<IAssemblyLoader>(),
-                    configuration: configuration));
 
             services.AddLogging(builder =>
             {
@@ -173,72 +147,49 @@ namespace OmniSharp
             return services.BuildServiceProvider();
         }
 
-        public CompositionHostBuilder WithOmniSharpAssemblies()
+        public WasmCompositionHostBuilder WithOmniSharpAssemblies()
         {
-            var assemblies = DiscoverOmniSharpAssemblies();
+            var assemblies = DiscoverOmnisharpAssembliesWasm();
 
-            return new CompositionHostBuilder(
+            return new WasmCompositionHostBuilder(
                 _serviceProvider,
                 _assemblies.Concat(assemblies).Distinct()
             );
         }
 
-        public CompositionHostBuilder WithAssemblies(params Assembly[] assemblies)
+        public WasmCompositionHostBuilder WithAssemblies(params Assembly[] assemblies)
         {
-            return new CompositionHostBuilder(
+            return new WasmCompositionHostBuilder(
                 _serviceProvider,
                 _assemblies.Concat(assemblies).Distinct()
             );
         }
 
-        private List<Assembly> DiscoverOmniSharpAssemblies()
+        private List<Assembly> DiscoverOmnisharpAssembliesWasm()
         {
-            var assemblyLoader = _serviceProvider.GetRequiredService<IAssemblyLoader>();
             var logger = _serviceProvider
                 .GetRequiredService<ILoggerFactory>()
-                .CreateLogger<CompositionHostBuilder>();
-
+                .CreateLogger<WasmCompositionHostBuilder>();
             // Iterate through all runtime libraries in the dependency context and
             // load them if they depend on OmniSharp.
             var assemblies = new List<Assembly>();
-            var dependencyContext = DependencyContext.Default;
-            foreach (var runtimeLibrary in dependencyContext.RuntimeLibraries)
+
+            var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var assembly in loadedAssemblies)
             {
-                if (DependsOnOmniSharp(runtimeLibrary))
+                var referencedAssemblies = assembly.GetReferencedAssemblies();
+                foreach (var referencedAssembly in referencedAssemblies)
                 {
-                    foreach (var name in runtimeLibrary.GetDefaultAssemblyNames(dependencyContext))
+                    if (CompositionHostBuilder.DependsOnOmniSharp(referencedAssembly.Name))
                     {
-                        var assembly = assemblyLoader.Load(name);
-                        if (assembly != null)
-                        {
-                            assemblies.Add(assembly);
-                            logger.LogDebug($"Loaded {assembly.FullName}");
-                        }
+                        logger.LogDebug($"Assembly {referencedAssembly.Name} references omnisharp");
+                        assemblies.Add(assembly);
+                        continue;
                     }
                 }
             }
 
             return assemblies;
-        }
-
-        private static bool DependsOnOmniSharp(RuntimeLibrary runtimeLibrary)
-        {
-            foreach (var dependency in runtimeLibrary.Dependencies)
-            {
-                if (DependsOnOmniSharp(dependency.Name))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        internal static bool DependsOnOmniSharp(string dependencyName)
-        {
-            return dependencyName == "OmniSharp.Abstractions" ||
-                    dependencyName == "OmniSharp.Shared" ||
-                    dependencyName == "OmniSharp.Roslyn";
         }
     }
 }
