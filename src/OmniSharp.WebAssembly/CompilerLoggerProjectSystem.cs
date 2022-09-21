@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Composition;
-using System.IO;
-using System.Net;
-using System.Net.Http;
 using System.Threading.Tasks;
+
 using Basic.CompilerLog.Util;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -42,24 +41,8 @@ internal class CompilerLoggerProjectSystem : IProjectSystem
         if (Initialized) return;
 
         configuration.Bind(_options);
-
-        var destination = Path.Combine(Environment.CurrentDirectory, "localfile.compilerlog");
-        _logger.LogInformation($"Downloading compiler log from {_options.LogUri} to ");
-        using (var client = new HttpClient())
-        {
-            using (var s = client.GetStreamAsync(_options.LogUri))
-            {
-                using (var fs = new FileStream(destination, FileMode.OpenOrCreate))
-                {
-                    s.Result.CopyTo(fs);
-                }
-            }
-        }
-
-        _logger.LogInformation("Downloaded exists? " + File.Exists(destination));
-        _logger.LogInformation("Contents? " + File.ReadAllText(destination));
-
-        using var compilerLogStream = CompilerLogUtil.GetOrCreateCompilerLogStream(destination);
+        _logger.LogInformation($"Reading compiler log from {_options.LogUri}");
+        using var compilerLogStream = CompilerLogUtil.GetOrCreateCompilerLogStream(_options.LogUri.IsAbsoluteUri ? _options.LogUri.AbsolutePath : _options.LogUri.OriginalString);
         using var reader = SolutionReader.Create(compilerLogStream);
         var solution = reader.ReadSolution();
         _workspace.AddSolution(solution);
