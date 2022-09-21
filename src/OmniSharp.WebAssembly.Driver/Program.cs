@@ -1,5 +1,10 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 
@@ -17,14 +22,35 @@ namespace OmniSharp.WebAssembly.Driver
                 Console.WriteLine($"hello from {typeof(Program).AssemblyQualifiedName}");
 
                 var environment = new OmniSharpEnvironment(logLevel: LogLevel.Trace);
-                var configurationResult = new ConfigurationBuilder(environment).Build();
+                var configurationResult = new ConfigurationBuilder(environment).Build((builder) =>
+                {
+                    _ = builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(
+@"{
+  ""CompilerLogger"": {
+    ""LogUri"": ""C:\\Users\\dabarbet\\source\\repos\\ConsoleApp4\\msbuild.compilerlog""
+  }
+}")));
+
+                });
+                if (configurationResult.HasError())
+                {
+                    Console.WriteLine("config exception: " + configurationResult.Exception);
+                }
+
+                var section = configurationResult.Configuration.GetSection("CompilerLogger");
+                Console.WriteLine("section: " + section.GetValue<Uri>("LogUri"));
+
                 var serviceProvider = WasmCompositionHostBuilder.CreateDefaultServiceProvider(environment, configurationResult.Configuration, new ConsoleEventEmitter(),
                     configureLogging: builder => builder.AddProvider(new SimpleWasmConsoleLoggerProvider()));
                 var compositionHostBuilder = new WasmCompositionHostBuilder(serviceProvider)
                             .WithOmniSharpAssemblies().WithAssemblies(new System.Reflection.Assembly[] { typeof(Host).Assembly });
                             
                 var composition = compositionHostBuilder.Build(Environment.CurrentDirectory);
+
+                WorkspaceInitializer.Initialize(serviceProvider, composition);
+
                 Console.WriteLine($"project systems: {string.Join(",", composition.GetExports<IProjectSystem>())}");
+                
             }
             catch (Exception ex)
             {

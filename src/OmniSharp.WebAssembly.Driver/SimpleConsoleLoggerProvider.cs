@@ -38,7 +38,11 @@ namespace OmniSharp.WebAssembly.Driver
 
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
             {
-                if (eventId == default)
+                if (exception != null)
+                {
+                    Console.WriteLine($"[{logLevel}][{_categoryName}]{formatter(state, exception)}{Environment.NewLine}Exception:{exception}");
+                }
+                else if (eventId == default) 
                 {
                     Console.WriteLine($"[{logLevel}][{_categoryName}]{formatter(state, exception)}");
                 }

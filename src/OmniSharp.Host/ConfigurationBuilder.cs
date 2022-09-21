@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using OmniSharp.Internal;
@@ -34,6 +37,7 @@ namespace OmniSharp
                 configBuilder.CreateAndAddGlobalOptionsFile(_environment);
 
                 // Use the local omnisharp config if there's any in the root path
+
                 configBuilder.AddJsonFile(
                     new PhysicalFileProvider(_environment.TargetDirectory).WrapForPolling(),
                     Constants.OptionsFile,
