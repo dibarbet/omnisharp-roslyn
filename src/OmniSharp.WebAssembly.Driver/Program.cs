@@ -11,6 +11,7 @@ using Microsoft.JSInterop;
 using OmniSharp.Eventing;
 using OmniSharp.Services;
 using System.Threading.Tasks;
+using System.Linq;
 
 namespace OmniSharp.WebAssembly.Driver
 {
@@ -36,17 +37,19 @@ namespace OmniSharp.WebAssembly.Driver
                 var environment = new OmniSharpEnvironment(logLevel: LogLevel.Trace);
                 var configurationResult = new ConfigurationBuilder(environment).Build((builder) =>
                 {
-                    _ = builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(
+                    var jsonOptions =
 $@"{{
   ""CompilerLogger"": {{
     ""LogUri"": ""{compilerLog}""
   }}
-}}")));
+}}";
+                    _ = builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(jsonOptions)));
 
                 });
                 if (configurationResult.HasError())
                 {
                     Console.WriteLine("config exception: " + configurationResult.Exception);
+                    throw configurationResult.Exception;
                 }
 
                 var section = configurationResult.Configuration.GetSection("CompilerLogger");
@@ -61,8 +64,12 @@ $@"{{
 
                 WorkspaceInitializer.Initialize(serviceProvider, composition);
 
-                Console.WriteLine($"project systems: {string.Join(",", composition.GetExports<IProjectSystem>())}");
-
+                var workspace = composition.GetExport<OmniSharpWorkspace>();
+                var compilation = await workspace.CurrentSolution.Projects.First().GetCompilationAsync();
+                var diagnostics = compilation.GetDiagnostics();
+                Console.WriteLine($"Diagnostics:{string.Join(Environment.NewLine, diagnostics)}");
+                var symbols = compilation.GetSymbolsWithName("Program");
+                Console.WriteLine($"Symbol: {symbols.First().Name}, {symbols.First().Kind}");
             }
             catch (Exception ex)
             {
@@ -96,6 +103,9 @@ $@"{{
 
                 Console.WriteLine($"Done");
                 Console.WriteLine("Downloaded exists? " + File.Exists(destination));
+
+                // in json \ is an escape char
+                destination = destination.Replace(@"\", "/");
                 return destination;
             }
         }
