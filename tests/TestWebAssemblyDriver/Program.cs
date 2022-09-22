@@ -4,6 +4,6 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        OmniSharp.WebAssembly.Driver.Program.InitializeAsync().Wait();
+        //OmniSharp.WebAssembly.Driver.Program.InitializeAsync().Wait();
     }
 }

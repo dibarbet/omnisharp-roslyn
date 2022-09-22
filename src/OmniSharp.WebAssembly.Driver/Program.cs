@@ -17,35 +17,21 @@ namespace OmniSharp.WebAssembly.Driver
 {
     public class Program
     {
+
         public static void Main(string[] args)
         {
-            Console.WriteLine("main");
         }
 
-        [JSInvokable] // The method is invoked from JavaScript.
-        public static string GetName() => $"{nameof(GetName)} from Omnisharp";
-
         [JSInvokable]
-        public static async Task<string> InitializeAsync()
+        public static async Task<string> InitializeAsync(byte[] compilerLogBytes)
         {
             try
             {
                 Console.WriteLine($"hello from {typeof(Program).AssemblyQualifiedName}");
 
-                var compilerLog = await DownloadCompilerLogAsync();
-
                 var environment = new OmniSharpEnvironment(logLevel: LogLevel.Trace);
-                var configurationResult = new ConfigurationBuilder(environment).Build((builder) =>
-                {
-                    var jsonOptions =
-$@"{{
-  ""CompilerLogger"": {{
-    ""LogUri"": ""{compilerLog}""
-  }}
-}}";
-                    _ = builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(jsonOptions)));
-
-                });
+                CompilerLoggerProjectSystem.CompilerLogBytes = compilerLogBytes;
+                var configurationResult = new ConfigurationBuilder(environment).Build((builder) => { });
                 if (configurationResult.HasError())
                 {
                     Console.WriteLine("config exception: " + configurationResult.Exception);
@@ -66,18 +52,17 @@ $@"{{
 
                 var workspace = composition.GetExport<OmniSharpWorkspace>();
                 var compilation = await workspace.CurrentSolution.Projects.First().GetCompilationAsync();
-                var diagnostics = compilation.GetDiagnostics();
-                Console.WriteLine($"Diagnostics:{string.Join(Environment.NewLine, diagnostics)}");
+                // var diagnostics = compilation.GetDiagnostics();
+                // Console.WriteLine($"Diagnostics:{string.Join(Environment.NewLine, diagnostics)}");
                 var symbols = compilation.GetSymbolsWithName("Program");
-                Console.WriteLine($"Symbol: {symbols.First().Name}, {symbols.First().Kind}");
+                return $"Symbol: {symbols.First().Name}, {symbols.First().Kind}";
             }
             catch (Exception ex)
             {
                 // Catch the exception and write it out to prevent a huge JS stack trace.
-                Console.WriteLine(ex.ToString());
-            }
+                return ex.ToString();
 
-            return "done!";
+            }
         }
 
         private static async Task<string> DownloadCompilerLogAsync()

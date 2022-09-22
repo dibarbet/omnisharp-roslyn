@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Composition;
+using System.IO;
 using System.Threading.Tasks;
 
 using Basic.CompilerLog.Util;
@@ -16,8 +17,11 @@ using OmniSharp.Services;
 namespace OmniSharp.WebAssembly;
 
 [ExportProjectSystem(ProjectSystemNames.CompilerLoggerProjectSystem)]
-internal sealed class CompilerLoggerProjectSystem : IProjectSystem, IDisposable
+public sealed class CompilerLoggerProjectSystem : IProjectSystem, IDisposable
 {
+    // Horrible
+    public static byte[]? CompilerLogBytes;
+
     private readonly CompilerLoggerOptions _options = new();
     private readonly OmniSharpWorkspace _workspace;
     private readonly TaskCompletionSource _completionSource = new TaskCompletionSource();
@@ -42,9 +46,11 @@ internal sealed class CompilerLoggerProjectSystem : IProjectSystem, IDisposable
         if (Initialized) return;
 
         configuration.Bind(_options);
-        _logger.LogInformation($"Reading compiler log from {_options.LogUri}");
-        _reader = SolutionReader.Create(_options.LogUri.IsAbsoluteUri ? _options.LogUri.AbsolutePath : _options.LogUri.OriginalString);
+        var memoryStream = new MemoryStream(CompilerLogBytes!);
+        _reader = SolutionReader.Create(memoryStream);
         var solution = _reader.ReadSolution();
+        _logger.LogInformation($"Read solution. There are {solution.Projects.Count} projects in the solution.");
+
         _workspace.AddSolution(solution);
         _completionSource.SetResult();
     }
