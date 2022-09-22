@@ -16,12 +16,13 @@ using OmniSharp.Services;
 namespace OmniSharp.WebAssembly;
 
 [ExportProjectSystem(ProjectSystemNames.CompilerLoggerProjectSystem)]
-internal class CompilerLoggerProjectSystem : IProjectSystem
+internal sealed class CompilerLoggerProjectSystem : IProjectSystem, IDisposable
 {
-    private readonly CompilerLoggerOptions _options  = new();
+    private readonly CompilerLoggerOptions _options = new();
     private readonly OmniSharpWorkspace _workspace;
     private readonly TaskCompletionSource _completionSource = new TaskCompletionSource();
     private readonly ILogger _logger;
+    private SolutionReader? _reader;
 
     public string Key => "CompilerLogger";
     public string Language => LanguageNames.CSharp;
@@ -42,9 +43,8 @@ internal class CompilerLoggerProjectSystem : IProjectSystem
 
         configuration.Bind(_options);
         _logger.LogInformation($"Reading compiler log from {_options.LogUri}");
-        using var compilerLogStream = CompilerLogUtil.GetOrCreateCompilerLogStream(_options.LogUri.IsAbsoluteUri ? _options.LogUri.AbsolutePath : _options.LogUri.OriginalString);
-        using var reader = SolutionReader.Create(compilerLogStream);
-        var solution = reader.ReadSolution();
+        _reader = SolutionReader.Create(_options.LogUri.IsAbsoluteUri ? _options.LogUri.AbsolutePath : _options.LogUri.OriginalString);
+        var solution = _reader.ReadSolution();
         _workspace.AddSolution(solution);
         _completionSource.SetResult();
     }
@@ -62,5 +62,14 @@ internal class CompilerLoggerProjectSystem : IProjectSystem
     public Task WaitForIdleAsync()
     {
         return _completionSource.Task;
+    }
+
+    private void Dispose(bool disposing)
+    {
+    }
+
+    public void Dispose()
+    {
+        _reader?.Dispose();
     }
 }
