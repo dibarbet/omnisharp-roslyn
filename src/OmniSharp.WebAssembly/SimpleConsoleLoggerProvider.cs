@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 
-namespace OmniSharp.WebAssembly.Driver
+namespace OmniSharp.WebAssembly
 {
     /// <summary>
     /// The default console logger throws a platform not supported exception in wasm.
@@ -36,7 +36,7 @@ namespace OmniSharp.WebAssembly.Driver
                 return true;
             }
 
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
             {
                 if (exception != null)
                 {
@@ -52,13 +52,15 @@ namespace OmniSharp.WebAssembly.Driver
                 }
             }
 
-            private class NullScope : IDisposable
-            {
-                public static NullScope Instance => new();
-                public void Dispose()
-                {
-                }
-            }
+            
+        }
+    }
+
+    public class NullScope : IDisposable
+    {
+        public static NullScope Instance => new();
+        public void Dispose()
+        {
         }
     }
 }
