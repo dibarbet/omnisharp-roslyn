@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Threading;
 using OmniSharp.Stdio;
 using OmniSharp.Protocol;
+using OmniSharp.Roslyn.CSharp.Services;
 
 namespace OmniSharp.WebAssembly;
 
@@ -42,7 +43,11 @@ public class Program
             var serviceProvider = WasmCompositionHostBuilder.CreateDefaultServiceProvider(environment, configurationResult.Configuration, new ConsoleEventEmitter(),
                 configureLogging: builder => builder.AddProvider(loggerProvider ?? new SimpleWasmConsoleLoggerProvider()));
             var compositionHostBuilder = new WasmCompositionHostBuilder(serviceProvider)
-                        .WithOmniSharpAssemblies().WithAssemblies(new System.Reflection.Assembly[] { typeof(Program).Assembly });
+                        .WithOmniSharpAssemblies().WithAssemblies(new System.Reflection.Assembly[]
+                        {
+                            typeof(Program).Assembly,
+                            typeof(RoslynFeaturesHostServicesProvider).Assembly
+                        });
 
             var composition = compositionHostBuilder.Build(Environment.CurrentDirectory);
 

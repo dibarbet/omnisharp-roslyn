@@ -52,12 +52,14 @@ namespace OmniSharp
             var config = new ContainerConfiguration();
 
             var fileSystemWatcher = _serviceProvider.GetRequiredService<IFileSystemWatcher>();
+            var fileSystemNotifier = _serviceProvider.GetRequiredService<IFileSystemNotifier>();
 
             var logger = loggerFactory.CreateLogger<CompositionHostBuilder>();
 
             config = config
                 .WithProvider(MefValueProvider.From(_serviceProvider))
                 .WithProvider(MefValueProvider.From(fileSystemWatcher))
+                .WithProvider(MefValueProvider.From(fileSystemNotifier))
                 .WithProvider(MefValueProvider.From(memoryCache))
                 .WithProvider(MefValueProvider.From(loggerFactory))
                 .WithProvider(MefValueProvider.From(environment))
@@ -103,6 +105,7 @@ namespace OmniSharp
 
             // Required by omnisharp workspace.
             services.TryAddSingleton(_ => new ManualFileSystemWatcher());
+            services.TryAddSingleton<IFileSystemNotifier>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
             services.TryAddSingleton<IFileSystemWatcher>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
 
             // Caching
@@ -165,6 +168,7 @@ namespace OmniSharp
             var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (var assembly in loadedAssemblies)
             {
+                logger.LogDebug($"Finding dependencies for {assembly.GetName().Name}");
                 var referencedAssemblies = assembly.GetReferencedAssemblies();
                 foreach (var referencedAssembly in referencedAssemblies)
                 {

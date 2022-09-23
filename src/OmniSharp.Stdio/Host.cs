@@ -61,12 +61,7 @@ namespace OmniSharp.Stdio
                 .Select(x => x.Metadata)
                 .ToArray();
 
-            var handlers = _compositionHost.GetExports<Lazy<IRequestHandler, OmniSharpRequestHandlerMetadata>>();
-            foreach (var h in handlers)
-            {
-                _logger.LogInformation($"[{h.Metadata.Language}]{h.Metadata.EndpointName}");
-            }
-
+            var handlers = _compositionHost.GetExports<Lazy<IRequestHandler, OmniSharpRequestHandlerMetadata>>().ToArray();
             var updateBufferEndpointHandler = new Lazy<EndpointHandler<UpdateBufferRequest, object>>(
                 () => (EndpointHandler<UpdateBufferRequest, object>)_endpointHandlers[OmniSharpEndpoints.UpdateBuffer].Value);
             var languagePredicateHandler = new LanguagePredicateHandler(projectSystems);
