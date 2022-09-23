@@ -718,11 +718,11 @@ Task("PublishNuGet")
 
 Task("Publish")
     .IsDependentOn("Build")
-    .IsDependentOn("PublishMonoBuilds")
-    .IsDependentOn("PublishNet6Builds")
-    .IsDependentOn("PublishWebAssemblyBuilds")
-    .IsDependentOn("PublishWindowsBuilds")
-    .IsDependentOn("PublishNuGet");
+    //.IsDependentOn("PublishMonoBuilds")
+    //.IsDependentOn("PublishNet6Builds")
+    .IsDependentOn("PublishWebAssemblyBuilds");
+    //.IsDependentOn("PublishWindowsBuilds")
+    //.IsDependentOn("PublishNuGet");
 
 /// <summary>
 ///  Execute the run script.

@@ -1,4 +1,5 @@
 ﻿@page "/"
+@using OmniSharp.Services
 @using OmniSharp.WebAssembly
 @using System.Text.RegularExpressions
 @using System.Web
@@ -28,7 +29,7 @@
         var memoryStream = new MemoryStream();
         var stream = e.File.OpenReadStream(maxAllowedSize: 2147483648);
         await stream.CopyToAsync(memoryStream);
-        var response = await OmniSharp.WebAssembly.Host.InitializeAsync(memoryStream.ToArray(), new RazorLoggerProvider(this));
+        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), new RazorLoggerProvider(this));
         new RazorLogger(this, "Result").LogInformation(response);
     }
 
@@ -50,7 +51,7 @@
         }
     }
 
-    class RazorLogger : ILogger
+    class RazorLogger : ILogger, ISharedTextWriter
     {
         private readonly string _categoryName;
         private readonly Index _page;
@@ -61,7 +62,7 @@
             _page = page;
         }
 
-        public IDisposable BeginScope<TState>(TState state)
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
         {
             return NullScope.Instance;
         }
@@ -86,6 +87,11 @@
                 _page.Text.Add($"[{logLevel}][{_categoryName}][{eventId}]{formatter(state, exception)}");
             }
             _page.StateHasChanged();
+        }
+
+        public void WriteLine(object value)
+        {
+            this.LogInformation(value.ToString());
         }
     }
 

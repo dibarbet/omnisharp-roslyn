@@ -8,6 +8,7 @@
     <ItemGroup>
         <ProjectReference Include="..\OmniSharp.Host\OmniSharp.Host.csproj" />
         <ProjectReference Include="..\OmniSharp.Roslyn.CSharp\OmniSharp.Roslyn.CSharp.csproj" />
+        <ProjectReference Include="..\OmniSharp.Stdio\OmniSharp.Stdio.csproj" />
     </ItemGroup>
 
     <ItemGroup>

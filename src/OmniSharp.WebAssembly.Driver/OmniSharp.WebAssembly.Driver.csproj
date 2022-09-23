@@ -6,6 +6,10 @@
         <Clean>false</Clean>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net6.0|AnyCPU'">
+      <NoWarn>CS8002</NoWarn>
+    </PropertyGroup>
+
     <ItemGroup>
         <ProjectReference Include="..\OmniSharp.WebAssembly\OmniSharp.WebAssembly.csproj" />
     </ItemGroup>

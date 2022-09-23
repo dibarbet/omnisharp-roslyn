@@ -40,7 +40,7 @@ namespace OmniSharp
             _exportDescriptorProviders = exportDescriptorProviders ?? Array.Empty<ExportDescriptorProvider>();
         }
 
-        public CompositionHost Build(string workingDirectory)
+        public virtual CompositionHost Build(string workingDirectory)
         {
             var options = _serviceProvider.GetRequiredService<IOptionsMonitor<OmniSharpOptions>>();
             var memoryCache = _serviceProvider.GetRequiredService<IMemoryCache>();
@@ -106,7 +106,7 @@ namespace OmniSharp
             return config.CreateContainer();
         }
 
-        private static IEnumerable<Type> SafeGetTypes(Assembly a)
+        protected static IEnumerable<Type> SafeGetTypes(Assembly a)
         {
             try
             {
@@ -173,7 +173,7 @@ namespace OmniSharp
             return services.BuildServiceProvider();
         }
 
-        public CompositionHostBuilder WithOmniSharpAssemblies()
+        public virtual CompositionHostBuilder WithOmniSharpAssemblies()
         {
             var assemblies = DiscoverOmniSharpAssemblies();
 
@@ -183,7 +183,7 @@ namespace OmniSharp
             );
         }
 
-        public CompositionHostBuilder WithAssemblies(params Assembly[] assemblies)
+        public virtual CompositionHostBuilder WithAssemblies(params Assembly[] assemblies)
         {
             return new CompositionHostBuilder(
                 _serviceProvider,

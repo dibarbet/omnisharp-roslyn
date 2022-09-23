@@ -1,59 +1,75 @@
 using System;
 using System.IO;
-using System.Net.Http.Headers;
-using System.Net.Http;
-using System.Text;
 
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 using OmniSharp.Eventing;
 using OmniSharp.Services;
 using System.Threading.Tasks;
 using System.Linq;
+using Microsoft.Extensions.DependencyInjection;
+using System.Threading;
+using OmniSharp.Stdio;
+using OmniSharp.Protocol;
+using OmniSharp.Roslyn.CSharp.Services;
 
 namespace OmniSharp.WebAssembly;
 
-public class Host : IDisposable
+public class Program
 {
-    public void Dispose()
-    {
-        throw new NotImplementedException();
-    }
+    // todo dispose / shutdown /etc.
+    private static CancellationTokenSource _source = new();
+    private static Host? _host;
 
-    public static async Task<string> InitializeAsync(byte[] compilerLogBytes, ILoggerProvider? loggerProvider = null)
+    public static async Task<string> InitializeAsync(byte[] compilerLogBytes, TextReader input, ISharedTextWriter outputWriter, ILoggerProvider? loggerProvider = null)
     {
         try
         {
-            Console.WriteLine($"hello from {typeof(Host).AssemblyQualifiedName}");
+            loggerProvider ??= new SimpleWasmConsoleLoggerProvider();
+            var logger = loggerProvider.CreateLogger("InitializeAsync");
+            logger.LogInformation($"hello from {typeof(Program).AssemblyQualifiedName}");
 
             var environment = new OmniSharpEnvironment(logLevel: LogLevel.Trace);
             CompilerLoggerProjectSystem.CompilerLogBytes = compilerLogBytes;
             var configurationResult = new ConfigurationBuilder(environment).Build((builder) => { });
             if (configurationResult.HasError())
             {
-                Console.WriteLine("config exception: " + configurationResult.Exception);
+                logger.LogInformation("config exception: " + configurationResult.Exception);
                 throw configurationResult.Exception;
             }
 
             var section = configurationResult.Configuration.GetSection("CompilerLogger");
-            Console.WriteLine("section: " + section.GetValue<Uri>("LogUri"));
 
             var serviceProvider = WasmCompositionHostBuilder.CreateDefaultServiceProvider(environment, configurationResult.Configuration, new ConsoleEventEmitter(),
                 configureLogging: builder => builder.AddProvider(loggerProvider ?? new SimpleWasmConsoleLoggerProvider()));
             var compositionHostBuilder = new WasmCompositionHostBuilder(serviceProvider)
-                        .WithOmniSharpAssemblies().WithAssemblies(new System.Reflection.Assembly[] { typeof(Host).Assembly });
+                        .WithOmniSharpAssemblies().WithAssemblies(new System.Reflection.Assembly[]
+                        {
+                            typeof(Program).Assembly,
+                            typeof(RoslynFeaturesHostServicesProvider).Assembly
+                        });
 
             var composition = compositionHostBuilder.Build(Environment.CurrentDirectory);
 
+            // probably don't need - should be done in languageserver host / start / etc.
             WorkspaceInitializer.Initialize(serviceProvider, composition);
 
             var workspace = composition.GetExport<OmniSharpWorkspace>();
             var compilation = await workspace.CurrentSolution.Projects.First().GetCompilationAsync();
-            // var diagnostics = compilation.GetDiagnostics();
-            // Console.WriteLine($"Diagnostics:{string.Join(Environment.NewLine, diagnostics)}");
             var symbols = compilation!.GetSymbolsWithName("Program");
-            return $"Symbol: {symbols.First().Name}, {symbols.First().Kind}";
+            logger.LogInformation($"Symbol: {symbols.First().Name}, {symbols.First().Kind}");
+
+            // todo cancellation token?
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            _host = new Host(input, outputWriter, environment, serviceProvider, compositionHostBuilder, loggerFactory, _source);
+            // something weird with tasks / cancellation / readline in the host.start.
+            // instead just implement simpler version where we just write start, then call HandleRequest whenever JS calls into us.
+            outputWriter.WriteLine(new EventPacket()
+            {
+                Event = "started"
+            });
+
+            return "done";
         }
         catch (Exception ex)
         {
@@ -63,6 +79,12 @@ public class Host : IDisposable
         }
     }
 
+    public static Task InvokeRequestAsync(string json)
+    {
+        return _host!.HandleRequestAsync(json);
+    }
+
+    // todo stdio emitter
     class ConsoleEventEmitter : IEventEmitter
     {
         public void Emit(string kind, object args)

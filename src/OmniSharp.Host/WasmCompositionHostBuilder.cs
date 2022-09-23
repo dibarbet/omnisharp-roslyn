@@ -24,7 +24,7 @@ using OmniSharp.Services;
 
 namespace OmniSharp
 {
-    public class WasmCompositionHostBuilder
+    public class WasmCompositionHostBuilder : CompositionHostBuilder
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly IEnumerable<Assembly> _assemblies;
@@ -33,14 +33,14 @@ namespace OmniSharp
         public WasmCompositionHostBuilder(
             IServiceProvider serviceProvider,
             IEnumerable<Assembly> assemblies = null,
-            IEnumerable<ExportDescriptorProvider> exportDescriptorProviders = null)
+            IEnumerable<ExportDescriptorProvider> exportDescriptorProviders = null) : base(serviceProvider, assemblies, exportDescriptorProviders)
         {
             _serviceProvider = serviceProvider;
             _assemblies = assemblies ?? Array.Empty<Assembly>();
             _exportDescriptorProviders = exportDescriptorProviders ?? Array.Empty<ExportDescriptorProvider>();
         }
 
-        public CompositionHost Build(string workingDirectory)
+        public override CompositionHost Build(string workingDirectory)
         {
             var options = _serviceProvider.GetRequiredService<IOptionsMonitor<OmniSharpOptions>>();
             var memoryCache = _serviceProvider.GetRequiredService<IMemoryCache>();
@@ -52,12 +52,14 @@ namespace OmniSharp
             var config = new ContainerConfiguration();
 
             var fileSystemWatcher = _serviceProvider.GetRequiredService<IFileSystemWatcher>();
+            var fileSystemNotifier = _serviceProvider.GetRequiredService<IFileSystemNotifier>();
 
             var logger = loggerFactory.CreateLogger<CompositionHostBuilder>();
 
             config = config
                 .WithProvider(MefValueProvider.From(_serviceProvider))
                 .WithProvider(MefValueProvider.From(fileSystemWatcher))
+                .WithProvider(MefValueProvider.From(fileSystemNotifier))
                 .WithProvider(MefValueProvider.From(memoryCache))
                 .WithProvider(MefValueProvider.From(loggerFactory))
                 .WithProvider(MefValueProvider.From(environment))
@@ -89,19 +91,7 @@ namespace OmniSharp
             return config.CreateContainer();
         }
 
-        private static IEnumerable<Type> SafeGetTypes(Assembly a)
-        {
-            try
-            {
-                return a.DefinedTypes.Select(t => t.AsType()).ToArray();
-            }
-            catch (ReflectionTypeLoadException e)
-            {
-                return e.Types.Where(t => t != null).ToArray();
-            }
-        }
-
-        public static IServiceProvider CreateDefaultServiceProvider(
+        public new static IServiceProvider CreateDefaultServiceProvider(
             IOmniSharpEnvironment environment,
             IConfigurationRoot configuration,
             IEventEmitter eventEmitter,
@@ -115,6 +105,7 @@ namespace OmniSharp
 
             // Required by omnisharp workspace.
             services.TryAddSingleton(_ => new ManualFileSystemWatcher());
+            services.TryAddSingleton<IFileSystemNotifier>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
             services.TryAddSingleton<IFileSystemWatcher>(sp => sp.GetRequiredService<ManualFileSystemWatcher>());
 
             // Caching
@@ -147,7 +138,7 @@ namespace OmniSharp
             return services.BuildServiceProvider();
         }
 
-        public WasmCompositionHostBuilder WithOmniSharpAssemblies()
+        public override CompositionHostBuilder WithOmniSharpAssemblies()
         {
             var assemblies = DiscoverOmnisharpAssembliesWasm();
 
@@ -157,7 +148,7 @@ namespace OmniSharp
             );
         }
 
-        public WasmCompositionHostBuilder WithAssemblies(params Assembly[] assemblies)
+        public override CompositionHostBuilder WithAssemblies(params Assembly[] assemblies)
         {
             return new WasmCompositionHostBuilder(
                 _serviceProvider,
@@ -177,6 +168,7 @@ namespace OmniSharp
             var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (var assembly in loadedAssemblies)
             {
+                logger.LogDebug($"Finding dependencies for {assembly.GetName().Name}");
                 var referencedAssemblies = assembly.GetReferencedAssemblies();
                 foreach (var referencedAssembly in referencedAssemblies)
                 {
