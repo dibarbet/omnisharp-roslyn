@@ -168,7 +168,6 @@ namespace OmniSharp
             var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
             foreach (var assembly in loadedAssemblies)
             {
-                logger.LogDebug($"Finding dependencies for {assembly.GetName().Name}");
                 var referencedAssemblies = assembly.GetReferencedAssemblies();
                 foreach (var referencedAssembly in referencedAssemblies)
                 {

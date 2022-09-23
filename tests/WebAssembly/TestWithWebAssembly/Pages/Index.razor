@@ -3,6 +3,7 @@
 @using OmniSharp.WebAssembly
 @using System.Text.RegularExpressions
 @using System.Web
+@using TestWithWebAssembly.Client
 
 <PageTitle>Index</PageTitle>
 
@@ -10,6 +11,14 @@
 
 <InputFile OnChange="@LoadFiles" multiple />
 
+<EditForm Model="@inputText" OnValidSubmit="@HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <InputText id="requestJson" @bind-Value="inputText.RequestJson" />
+
+        <button type="submit" disabled="@(!IsServerRunning)">@(!IsServerRunning ? "Waiting for start..." : "Run request")</button>
+    </EditForm>
 
 <p>
     @foreach (var line in Text)
@@ -22,15 +31,38 @@
 
 @code
 {
-    public List<string> Text { get; } = new List<string>();
+    private InputJsonRequest inputText = new();
+
+    public bool IsServerRunning = false;
+    public Stack<string> Text { get; } = new Stack<string>();
+
+    private ILoggerProvider _loggerProvider = default!;
+    private ILogger _logger = default!;
+
+    protected override Task OnInitializedAsync()
+    {
+        _loggerProvider = new RazorLoggerProvider(this);
+        _logger = _loggerProvider.CreateLogger("Index");
+        return Task.CompletedTask;
+    }
 
     private async Task LoadFiles(InputFileChangeEventArgs e)
     {
         var memoryStream = new MemoryStream();
         var stream = e.File.OpenReadStream(maxAllowedSize: 2147483648);
         await stream.CopyToAsync(memoryStream);
-        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), new RazorLoggerProvider(this));
+        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), _loggerProvider!);
+        if (response == "done")
+        {
+            IsServerRunning = true;
+        }
         new RazorLogger(this, "Result").LogInformation(response);
+    }
+
+    private Task HandleValidSubmit()
+    {
+        _logger.LogInformation("Submitting request");
+        return OmniSharp.WebAssembly.Program.InvokeRequestAsync(inputText.RequestJson!);
     }
 
     class RazorLoggerProvider : ILoggerProvider
@@ -76,15 +108,15 @@
         {
             if (exception != null)
             {
-                _page.Text.Add($"[{logLevel}][{_categoryName}]{formatter(state, exception)}{Environment.NewLine}Exception:{exception}");
+                _page.Text.Push($"[{logLevel}][{_categoryName}]{formatter(state, exception)}{Environment.NewLine}Exception:{exception}");
             }
             else if (eventId == default)
             {
-                _page.Text.Add($"[{logLevel}][{_categoryName}]{formatter(state, exception)}");
+                _page.Text.Push($"[{logLevel}][{_categoryName}]{formatter(state, exception)}");
             }
             else
             {
-                _page.Text.Add($"[{logLevel}][{_categoryName}][{eventId}]{formatter(state, exception)}");
+                _page.Text.Push($"[{logLevel}][{_categoryName}][{eventId}]{formatter(state, exception)}");
             }
             _page.StateHasChanged();
         }
