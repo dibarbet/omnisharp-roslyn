@@ -20,7 +20,7 @@ using System.Globalization;
 
 namespace OmniSharp.Stdio
 {
-    internal class Host : IDisposable
+    public class Host : IDisposable
     {
         private readonly TextReader _input;
         private readonly ISharedTextWriter _writer;
@@ -44,7 +44,7 @@ namespace OmniSharp.Stdio
             _serviceProvider = serviceProvider;
             _logger = loggerFactory.CreateLogger<Host>();
 
-            _logger.LogInformation($"Starting OmniSharp on {Platform.Current}");
+            _logger.LogInformation($"Starting OmniSharp on {"todo: refactor"/*Platform.Current*/}");
 
             _compositionHost = compositionHostBuilder.Build(_environment.TargetDirectory);
             _cachedStringBuilder = new CachedStringBuilder();
@@ -62,6 +62,10 @@ namespace OmniSharp.Stdio
                 .ToArray();
 
             var handlers = _compositionHost.GetExports<Lazy<IRequestHandler, OmniSharpRequestHandlerMetadata>>();
+            foreach (var h in handlers)
+            {
+                _logger.LogInformation($"[{h.Metadata.Language}]{h.Metadata.EndpointName}");
+            }
 
             var updateBufferEndpointHandler = new Lazy<EndpointHandler<UpdateBufferRequest, object>>(
                 () => (EndpointHandler<UpdateBufferRequest, object>)_endpointHandlers[OmniSharpEndpoints.UpdateBuffer].Value);
@@ -147,36 +151,18 @@ namespace OmniSharp.Stdio
                         break;
                     }
 
-                    var ignored = Task.Factory.StartNew(async () =>
-                    {
-                        try
-                        {
-                            await HandleRequest(line, _logger);
-                        }
-                        catch (Exception e)
-                        {
-                            if (e is AggregateException aggregateEx)
-                            {
-                                e = aggregateEx.Flatten().InnerException;
-                            }
-
-                            _writer.WriteLine(new EventPacket()
-                            {
-                                Event = "error",
-                                Body = JsonConvert.ToString(e.ToString(), '"', StringEscapeHandling.Default)
-                            });
-                        }
-                    });
+                    var ignored = Task.Factory.StartNew(async () => await HandleRequestAsync(line));
                 }
             });
 
             _logger.LogInformation($"Omnisharp server running using {nameof(TransportType.Stdio)} at location '{_environment.TargetDirectory}' on host {_environment.HostProcessId}.");
 
-            Console.CancelKeyPress += (sender, e) =>
+            // todo refactor
+            /*Console.CancelKeyPress += (sender, e) =>
             {
                 _cancellationTokenSource.Cancel();
                 e.Cancel = true;
-            };
+            };*/
 
             if (_environment.HostProcessId != -1)
             {
@@ -192,6 +178,27 @@ namespace OmniSharp.Stdio
                     // immediately
                     _cancellationTokenSource.Cancel();
                 }
+            }
+        }
+
+        public async Task HandleRequestAsync(string json)
+        {
+            try
+            {
+                await HandleRequest(json, _logger);
+            }
+            catch (Exception e)
+            {
+                if (e is AggregateException aggregateEx)
+                {
+                    e = aggregateEx.Flatten().InnerException;
+                }
+
+                _writer.WriteLine(new EventPacket()
+                {
+                    Event = "error",
+                    Body = JsonConvert.ToString(e.ToString(), '"', StringEscapeHandling.Default)
+                });
             }
         }
 

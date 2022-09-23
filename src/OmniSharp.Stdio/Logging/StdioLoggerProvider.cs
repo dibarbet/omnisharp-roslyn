@@ -3,7 +3,8 @@ using OmniSharp.Services;
 
 namespace OmniSharp.Stdio.Logging
 {
-    class StdioLoggerProvider : ILoggerProvider
+    // tod orename /refactor
+    public class StdioLoggerProvider : ILoggerProvider
     {
         private readonly ISharedTextWriter _writer;
 
