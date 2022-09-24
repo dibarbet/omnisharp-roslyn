@@ -35,6 +35,8 @@ public class Program
             CompilerLoggerProjectSystem.CompilerLogBytes = compilerLogBytes;
             var configurationResult = new ConfigurationBuilder(environment).Build((builder) =>
             {
+                // Json serialization thinks backslashes in windows file paths are escapes so we need to escape them.
+                workspaceBasePath = workspaceBasePath.Replace(@"\", @"\\");
                 var jsonOptions =
 $@"{{
   ""CompilerLogger"": {{

@@ -7,18 +7,36 @@
 
 <PageTitle>Index</PageTitle>
 
-<h1>Hello, world!</h1>
+<h2><u>Initialize Server</u></h2>
 
-<InputFile OnChange="@LoadFiles" multiple />
+<EditForm Model="@initializationOptions" OnValidSubmit="@HandleValidInitializeAsync">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
 
-<EditForm Model="@inputText" OnValidSubmit="@HandleValidSubmit">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+    Choose compiler log<br />
+    <InputFile accept=".compilerlog" OnChange="@LoadFiles" />
+    <br />
+    <InputText id="workspacePath" placeholder="Workspace path" @bind-Value="initializationOptions.WorkspacePath" />
+    <br />
+    <br />
+    <button type="submit" disabled="@(IsServerRunning)">@(IsServerRunning ? "Already started" : "Initialize server")</button>
+</EditForm>
+<br />
 
-        <InputText id="requestJson" @bind-Value="inputText.RequestJson" />
+<h2><u>Send Request</u></h2>
 
-        <button type="submit" disabled="@(!IsServerRunning)">@(!IsServerRunning ? "Waiting for start..." : "Run request")</button>
-    </EditForm>
+<EditForm Model="@inputText" OnValidSubmit="@HandleSubmitRequest">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText id="requestJson" placeholder="Request json" @bind-Value="inputText.RequestJson" />
+    <br />
+    <br />
+    <button type="submit" disabled="@(!IsServerRunning)">@(!IsServerRunning ? "Waiting for start..." : "Run request")</button>
+</EditForm>
+<br />
+
+<h2><u>Server Logs</u></h2>
 
 <p>
     @foreach (var line in Text)
@@ -31,6 +49,8 @@
 
 @code
 {
+    private InitializationOptions initializationOptions = new();
+
     private InputJsonRequest inputText = new();
 
     public bool IsServerRunning = false;
@@ -46,12 +66,19 @@
         return Task.CompletedTask;
     }
 
-    private async Task LoadFiles(InputFileChangeEventArgs e)
+    private Task LoadFiles(InputFileChangeEventArgs e)
     {
+        initializationOptions.CompilerLog = e.File;
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleValidInitializeAsync()
+    {
+        _logger.LogInformation("Initializing server...");
         var memoryStream = new MemoryStream();
-        var stream = e.File.OpenReadStream(maxAllowedSize: 2147483648);
+        var stream = initializationOptions.CompilerLog!.OpenReadStream(maxAllowedSize: 2147483648);
         await stream.CopyToAsync(memoryStream);
-        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), "/home/fred/git/wasm-test", new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), _loggerProvider!);
+        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), initializationOptions.WorkspacePath!, new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), _loggerProvider!);
         if (response == "done")
         {
             IsServerRunning = true;
@@ -59,7 +86,7 @@
         new RazorLogger(this, "Result").LogInformation(response);
     }
 
-    private Task HandleValidSubmit()
+    private Task HandleSubmitRequest()
     {
         _logger.LogInformation("Submitting request");
         return OmniSharp.WebAssembly.Program.InvokeRequestAsync(inputText.RequestJson!);
