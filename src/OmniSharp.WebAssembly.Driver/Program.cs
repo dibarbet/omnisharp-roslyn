@@ -34,9 +34,9 @@ namespace OmniSharp.WebAssembly.Driver
         }
 
         [JSInvokable]
-        public static async Task<string> InitializeAsync(byte[] compilerLogBytes)
+        public static async Task<string> InitializeAsync(byte[] compilerLogBytes, string workspaceBasePath)
         {
-            return await WebAssembly.Program.InitializeAsync(compilerLogBytes, new StreamReader(_inputStream), _outputWriter, _loggerProvider);
+            return await WebAssembly.Program.InitializeAsync(compilerLogBytes, workspaceBasePath, new StreamReader(_inputStream), _outputWriter, _loggerProvider);
         }
 
         class OutputWriter : ISharedTextWriter

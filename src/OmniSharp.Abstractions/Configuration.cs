@@ -2,7 +2,7 @@ namespace OmniSharp
 {
     internal static class Configuration
     {
-        public static bool ZeroBasedIndices = false;
+        public static bool ZeroBasedIndices = true;
 
         public const string RoslynVersion = "4.4.0.0";
         public const string RoslynPublicKeyToken = "31bf3856ad364e35";

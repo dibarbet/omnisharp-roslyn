@@ -51,7 +51,7 @@
         var memoryStream = new MemoryStream();
         var stream = e.File.OpenReadStream(maxAllowedSize: 2147483648);
         await stream.CopyToAsync(memoryStream);
-        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), _loggerProvider!);
+        var response = await OmniSharp.WebAssembly.Program.InitializeAsync(memoryStream.ToArray(), "/home/fred/git/wasm-test", new StreamReader(new MemoryStream()), new RazorLogger(this, "Output"), _loggerProvider!);
         if (response == "done")
         {
             IsServerRunning = true;

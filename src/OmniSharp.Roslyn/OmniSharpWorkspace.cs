@@ -53,6 +53,10 @@ namespace OmniSharp
         public OmniSharpWorkspace(HostServicesAggregator aggregator, ILoggerFactory loggerFactory, IFileSystemWatcher fileSystemWatcher)
             : this(aggregator.CreateHostServices(), loggerFactory, fileSystemWatcher)
         {
+            if (PathRemapper is null)
+            {
+                PathRemapper = new EmptyRemapper();
+            }
         }
 
         public OmniSharpWorkspace(HostServices hostServices, ILoggerFactory loggerFactory, IFileSystemWatcher fileSystemWatcher)
@@ -61,7 +65,11 @@ namespace OmniSharp
             BufferManager = new BufferManager(this, loggerFactory, fileSystemWatcher);
             _logger = loggerFactory.CreateLogger<OmniSharpWorkspace>();
             fileSystemWatcher.WatchDirectories(OnDirectoryRemoved);
+            PathRemapper = new EmptyRemapper();
         }
+
+        [Import(AllowDefault = true)]
+        public IPathRemapper PathRemapper { get; set; }
 
         public override bool CanOpenDocuments => true;
 
@@ -338,14 +346,16 @@ namespace OmniSharp
 
         public DocumentId GetDocumentId(string filePath)
         {
-            var documentIds = CurrentSolution.GetDocumentIdsWithFilePath(filePath);
+            var remapped = PathRemapper.Remap(filePath);
+            _logger.LogInformation("Remapped path is " + remapped);
+            var documentIds = CurrentSolution.GetDocumentIdsWithFilePath(remapped);
             return documentIds.FirstOrDefault();
         }
 
         public IEnumerable<Document> GetDocuments(string filePath)
         {
             return CurrentSolution
-                .GetDocumentIdsWithFilePath(filePath)
+                .GetDocumentIdsWithFilePath(PathRemapper.Remap(filePath))
                 .Select(id => CurrentSolution.GetDocument(id))
                 .OfType<Document>();
         }

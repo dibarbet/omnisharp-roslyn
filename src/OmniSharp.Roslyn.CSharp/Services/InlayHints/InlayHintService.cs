@@ -57,26 +57,26 @@ internal class InlayHintService :
         var sourceText = await document.GetTextAsync();
         var mappedSpan = sourceText.GetSpanFromRange(request.Location.Range);
 
-        var inlayHintsOptions = _omniSharpOptions.CurrentValue.RoslynExtensionsOptions.InlayHintsOptions;
+        //var inlayHintsOptions = _omniSharpOptions.CurrentValue.RoslynExtensionsOptions.InlayHintsOptions;
         var options = new OmniSharpInlineHintsOptions
         {
             ParameterOptions = new()
             {
-                EnabledForParameters = inlayHintsOptions.EnableForParameters,
-                ForIndexerParameters = inlayHintsOptions.ForIndexerParameters,
-                ForLiteralParameters = inlayHintsOptions.ForLiteralParameters,
-                ForObjectCreationParameters = inlayHintsOptions.ForObjectCreationParameters,
-                ForOtherParameters = inlayHintsOptions.ForOtherParameters,
-                SuppressForParametersThatDifferOnlyBySuffix = inlayHintsOptions.SuppressForParametersThatDifferOnlyBySuffix,
-                SuppressForParametersThatMatchArgumentName = inlayHintsOptions.SuppressForParametersThatMatchArgumentName,
-                SuppressForParametersThatMatchMethodIntent = inlayHintsOptions.SuppressForParametersThatMatchMethodIntent,
+                EnabledForParameters = true,
+                ForIndexerParameters = true,
+                ForLiteralParameters = true,
+                ForObjectCreationParameters = true,
+                ForOtherParameters = true,
+                SuppressForParametersThatDifferOnlyBySuffix = true,
+                SuppressForParametersThatMatchArgumentName = true,
+                SuppressForParametersThatMatchMethodIntent = true,
             },
             TypeOptions = new()
             {
-                EnabledForTypes = inlayHintsOptions.EnableForTypes,
-                ForImplicitObjectCreation = inlayHintsOptions.ForImplicitObjectCreation,
-                ForImplicitVariableTypes = inlayHintsOptions.ForImplicitVariableTypes,
-                ForLambdaParameterTypes = inlayHintsOptions.ForLambdaParameterTypes,
+                EnabledForTypes = true,
+                ForImplicitObjectCreation = true,
+                ForImplicitVariableTypes = true,
+                ForLambdaParameterTypes = true,
             }
         };
 

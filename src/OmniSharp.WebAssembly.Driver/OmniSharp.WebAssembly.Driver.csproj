@@ -21,6 +21,7 @@
              a new enough System.Memory and we'll get method missing exceptions when we are
              running with some newer MSBuild versions. -->
         <PackageReference Include="System.Memory" />
+        <PackageReference Include="StrongNamer" Version="0.2.5" />
 
         <PackageReference Include="DotNetJS" Version="*" GeneratePathProperty="true" />
     </ItemGroup>

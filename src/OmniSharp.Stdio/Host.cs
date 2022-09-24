@@ -35,6 +35,26 @@ namespace OmniSharp.Stdio
 
         public Host(
             TextReader input, ISharedTextWriter writer, IOmniSharpEnvironment environment,
+            IServiceProvider serviceProvider, CompositionHost compositionHost, ILoggerFactory loggerFactory, CancellationTokenSource cancellationTokenSource)
+        {
+            _cancellationTokenSource = cancellationTokenSource;
+            _input = input;
+            _writer = writer;
+            _environment = environment;
+            _serviceProvider = serviceProvider;
+            _logger = loggerFactory.CreateLogger<Host>();
+
+            _logger.LogInformation($"Starting OmniSharp on {"todo: refactor"/*Platform.Current*/}");
+
+            _compositionHost = compositionHost;
+            _cachedStringBuilder = new CachedStringBuilder();
+
+            var handlers = Initialize();
+            _endpointHandlers = handlers;
+        }
+
+        public Host(
+            TextReader input, ISharedTextWriter writer, IOmniSharpEnvironment environment,
             IServiceProvider serviceProvider, CompositionHostBuilder compositionHostBuilder, ILoggerFactory loggerFactory, CancellationTokenSource cancellationTokenSource)
         {
             _cancellationTokenSource = cancellationTokenSource;

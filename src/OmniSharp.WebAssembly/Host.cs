@@ -12,6 +12,8 @@ using System.Threading;
 using OmniSharp.Stdio;
 using OmniSharp.Protocol;
 using OmniSharp.Roslyn.CSharp.Services;
+using System.Text;
+using Microsoft.Extensions.Configuration;
 
 namespace OmniSharp.WebAssembly;
 
@@ -21,7 +23,7 @@ public class Program
     private static CancellationTokenSource _source = new();
     private static Host? _host;
 
-    public static async Task<string> InitializeAsync(byte[] compilerLogBytes, TextReader input, ISharedTextWriter outputWriter, ILoggerProvider? loggerProvider = null)
+    public static async Task<string> InitializeAsync(byte[] compilerLogBytes, string workspaceBasePath, TextReader input, ISharedTextWriter outputWriter, ILoggerProvider? loggerProvider = null)
     {
         try
         {
@@ -31,7 +33,17 @@ public class Program
 
             var environment = new OmniSharpEnvironment(logLevel: LogLevel.Trace);
             CompilerLoggerProjectSystem.CompilerLogBytes = compilerLogBytes;
-            var configurationResult = new ConfigurationBuilder(environment).Build((builder) => { });
+            var configurationResult = new ConfigurationBuilder(environment).Build((builder) =>
+            {
+                var jsonOptions =
+$@"{{
+  ""CompilerLogger"": {{
+    ""{nameof(CompilerLoggerOptions.CompilerLogBasePath)}"": ""/home/runner/work/wasm-test/wasm-test"",
+    ""{nameof(CompilerLoggerOptions.WorkspaceBasePath)}"": ""{workspaceBasePath}""
+  }}
+}}";
+                _ = builder.AddJsonStream(new MemoryStream(Encoding.UTF8.GetBytes(jsonOptions)));
+            });
             if (configurationResult.HasError())
             {
                 logger.LogInformation("config exception: " + configurationResult.Exception);
@@ -61,7 +73,7 @@ public class Program
 
             // todo cancellation token?
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-            _host = new Host(input, outputWriter, environment, serviceProvider, compositionHostBuilder, loggerFactory, _source);
+            _host = new Host(input, outputWriter, environment, serviceProvider, composition, loggerFactory, _source);
             // something weird with tasks / cancellation / readline in the host.start.
             // instead just implement simpler version where we just write start, then call HandleRequest whenever JS calls into us.
             outputWriter.WriteLine(new EventPacket()
